@@ -1,0 +1,7 @@
+        DISCLAIMER
+
+Raresh's Tetris is a programming excercise and NOT an officially licensed
+offering from The Tetris Company, LLC.
+
+Please support their work and purchase their games such as the recent
+Tetris Effect
