@@ -3,11 +3,11 @@ CXX = g++
 CXX_OPTS = -Wall -Wextra -g -I/usr/include/SDL2 
 LD_OPTS = -lSDL2 -lSDL2_ttf
 
-headers = tetromino.h
+headers = mode.h title.h tetris.h tetromino.h
 
 .PHONY: clean
 
-tetris: main.o tetris.o tetromino.o
+tetris: system.o mode.o tetris.o tetromino.o title.o
 	$(CXX) $(CXX_OPTS) -o $@ $^ $(LD_OPTS)
 
 %.o: %.cpp $(headers)

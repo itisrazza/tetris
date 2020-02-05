@@ -3,26 +3,20 @@
 #include <SDL.h>
 #include <vector>
 
+#include "mode.h"
 #include "tetromino.h"
 
-class TetrisGame {
-public:
-    uint32_t userevent_game_over;
-    uint32_t userevent_line_clear;
-    uint32_t userevent_hard_drop;
+class TetrisMode : public GameMode {
+    static const unsigned int BLOCK_SIZE = 16;
 
-    typedef unsigned int position_t;    // block positions
-    typedef void (*gameover_cb_t)();    // gameover callback prototype
+    static const unsigned int MATRIX_COLS = 10;         // matrix columns
+    static const unsigned int MATRIX_ROWS = 40;         // matrix rows
+    static const unsigned int MATRIX_VISIBLE_ROWS = 20; // visible matrix rows
+    Block matrix[MATRIX_ROWS][MATRIX_COLS];             // metrix
 
-    static const unsigned int MATRIX_COLS = 10;          // matrix columns
-    static const unsigned int MATRIX_ROWS = 40;          // matrix rows
-    static const unsigned int MATRIX_VISIBLE_ROWS = 20;  // visible matrix rows
+    SDL_TimerID tick_timer_id = 0;
 
-private:
     unsigned int level;                     // currently playing level
-
-    Block matrix[MATRIX_ROWS][MATRIX_COLS]; // metrix
-
     Tetromino tetromino_current;            // current tetromino
     Tetromino tetromino_held;               // tetromino on "hold"
 
@@ -34,19 +28,8 @@ private:
     void tetromino_commit();                // commits the tetromino to the matrix
     void tetromino_bag_generate();          // generate a new tetromino bag
 
-    gameover_cb_t gameover_cb;              // callback for gameover event
-
-public:
-    TetrisGame();
-    ~TetrisGame();
-
-    void tick();
-    uint32_t tick_interval();
-
     Block block_at(int x, int y);
     Block block_at(int x, int y, bool include_tetromino);
-
-    void set_gameover_cb(gameover_cb_t);
 
     void move_left();
     void move_right();
@@ -54,9 +37,26 @@ public:
     void hard_drop();
     void rotate_clockwise();
     void rotate_counterclockwise();
-    
     void tetromino_hold();
+
+    SDL_Surface* render_tetromino(Tetromino tetromino);
+    SDL_Surface* render_matrix();
 
     Tetromino get_held_tetromino();
     Tetromino get_next_tetromino();
+
+    struct color { char r; char g; char b; };
+
+public:
+    TetrisMode();
+    ~TetrisMode();
+
+    void initialise();
+    void deinitialise();
+
+    void draw(SDL_Surface*);
+    void handle_event(SDL_Event&);
+
+    void tick();
+    uint32_t tick_interval();
 };
