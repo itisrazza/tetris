@@ -9,6 +9,8 @@
 class TetrisMode : public GameMode {
     static const unsigned int BLOCK_SIZE = 16;
 
+    SDL_Surface* background;
+
     static const unsigned int MATRIX_COLS = 10;         // matrix columns
     static const unsigned int MATRIX_ROWS = 40;         // matrix rows
     static const unsigned int MATRIX_VISIBLE_ROWS = 20; // visible matrix rows

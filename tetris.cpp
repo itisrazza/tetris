@@ -15,12 +15,19 @@
 
 TetrisMode::TetrisMode()
 {
-    level = 0;
+    using namespace std::string_literals;
+
+    level = 1;
     state = State::PLAYING;
 
     srand(time(nullptr));
     tetromino_bag_generate();
     tetromino_new();
+
+    background = SDL_LoadBMP("background.bmp");
+    if (background == nullptr) {
+        throw std::runtime_error("Failed to load title image: "s + SDL_GetError());
+    }
 
     tick_timer_id = SDL_AddTimer(1000, [](uint32_t interval, void* userdata) -> uint32_t {
         TetrisMode* tetris_mode = (TetrisMode*)userdata;
@@ -40,6 +47,7 @@ TetrisMode::TetrisMode()
 TetrisMode::~TetrisMode()
 {
     SDL_RemoveTimer(tick_timer_id);
+    SDL_FreeSurface(background);
 }
 
 void TetrisMode::initialise()
@@ -55,6 +63,9 @@ void TetrisMode::deinitialise()
 void TetrisMode::draw(SDL_Surface* surface)
 {   
     auto font = game_system->get_font();
+
+    SDL_BlitScaled(background, nullptr, surface, nullptr);
+
 
     // draw the matrix on-screen
     SDL_Surface* matrix_surface = render_matrix();
@@ -109,6 +120,37 @@ void TetrisMode::draw(SDL_Surface* surface)
     SDL_BlitSurface(hold_tetromino, nullptr, surface, &rect);
     SDL_FreeSurface(hold_tetromino);
 
+    // score
+    char score_string[64];
+    sprintf(score_string, "SCORE: %8d", score);
+    SDL_Surface* score_text = TTF_RenderUTF8_Solid(font, score_string, color);
+    rect.w = score_text->w;
+    rect.h = score_text->h;
+    rect.x = 60 * 8;
+    rect.y = 16 * 5;
+    SDL_BlitSurface(score_text, nullptr, surface, &rect);
+    SDL_FreeSurface(score_text);
+
+    // score
+    char level_string[64];
+    sprintf(level_string, "LEVEL: %8d", level);
+    SDL_Surface* level_text = TTF_RenderUTF8_Solid(font, level_string, color);
+    rect.w = level_text->w;
+    rect.h = level_text->h;
+    rect.y += 16;
+    SDL_BlitSurface(level_text, nullptr, surface, &rect);
+    SDL_FreeSurface(level_text);
+
+    // score
+    char lines_string[64];
+    sprintf(lines_string, "LINES: %8d", lines);
+    SDL_Surface* lines_text = TTF_RenderUTF8_Solid(font, lines_string, color);
+    rect.w = lines_text->w;
+    rect.h = lines_text->h;
+    rect.y += 16;
+    SDL_BlitSurface(lines_text, nullptr, surface, &rect);
+    SDL_FreeSurface(lines_text);
+    
     // game over
     if (state == State::GAME_OVER && gameover_row > 20) {
         SDL_Surface* gameover_text = TTF_RenderUTF8_Solid(font, "GAME  OVER", color);
@@ -141,12 +183,12 @@ void TetrisMode::handle_event(SDL_Event& ev)
 {
     if (ev.type == SDL_KEYDOWN) {
         if (state == State::PLAYING) {
-            if (ev.key.keysym.sym == SDLK_a) move_left();
-            if (ev.key.keysym.sym == SDLK_d) move_right();
-            if (ev.key.keysym.sym == SDLK_w) hard_drop();
-            if (ev.key.keysym.sym == SDLK_s) soft_drop();
-            if (ev.key.keysym.sym == SDLK_q) rotate_counterclockwise();
-            if (ev.key.keysym.sym == SDLK_e) rotate_clockwise();
+            if (ev.key.keysym.sym == SDLK_LEFT) move_left();
+            if (ev.key.keysym.sym == SDLK_RIGHT) move_right();
+            if (ev.key.keysym.sym == SDLK_SPACE) hard_drop();
+            if (ev.key.keysym.sym == SDLK_DOWN) soft_drop();
+            if (ev.key.keysym.sym == SDLK_UP) rotate_counterclockwise();
+            if (ev.key.keysym.sym == SDLK_END) rotate_clockwise();
             if (ev.key.keysym.sym == SDLK_h) tetromino_hold();
         }
 
@@ -298,6 +340,7 @@ void TetrisMode::tick_game()
     }
 
     // check for line clear
+    int line_clear = 0;
     int line_check_row = 0;
     while (line_check_row < MATRIX_ROWS) {
         int block_count = 0;
@@ -307,6 +350,8 @@ void TetrisMode::tick_game()
         }
 
         if (block_count == MATRIX_COLS) {
+            line_clear++;
+            SDL_Log("Line clear: %d so far.", line_clear);
             // line cleared, copy down the line from above
             for (int copy_row = line_check_row; copy_row < MATRIX_ROWS - 1; copy_row++) {
                 for (int copy_col = 0; copy_col < MATRIX_COLS; copy_col++) {
@@ -316,6 +361,17 @@ void TetrisMode::tick_game()
         } else {
             line_check_row++;
         }
+    }
+
+    // calculate line clear score
+    if (line_clear > 0) {
+        float multiplier = 100;
+        multiplier += 200 * (line_clear - 1);
+        if (line_clear == 4) multiplier += 100;
+        score += multiplier * level;
+        SDL_Log("Line clear: %d lines : x%f multiplier", line_clear, multiplier);
+
+        lines += line_clear;
     }
 }
 
@@ -350,6 +406,8 @@ void TetrisMode::move_right()
 void TetrisMode::soft_drop()
 {
     tetromino_row--;
+    score += 1;
+    SDL_Log("Soft drop: 1 row");
     
     // if tetromino collides
     if (tetromino_collides()) {
@@ -366,6 +424,9 @@ void TetrisMode::soft_drop()
 
 void TetrisMode::hard_drop()
 {
+    int row_start = tetromino_row;
+    int row_diff;
+
     while (!tetromino_collides()) {
         tetromino_row--;
     }
@@ -373,8 +434,13 @@ void TetrisMode::hard_drop()
     tetromino_row++;
     if (tetromino_row >= MATRIX_ROWS) tetromino_row = 0;
 
+    row_diff = abs(tetromino_row - row_start);
+    score += 2 * SDL_abs(row_start - tetromino_row);
+
     tetromino_commit();
     tetromino_new();
+
+    SDL_Log("Hard drop: %d rows", row_diff);
 }
 
 void TetrisMode::rotate_clockwise()
