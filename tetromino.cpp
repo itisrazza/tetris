@@ -14,8 +14,8 @@ Tetromino::Tetromino()
 }
 
 Tetromino::tetromino_gen_t Tetromino::tetrominoes[] = {
-    Tetromino::I, Tetromino::O, Tetromino::T,
-    Tetromino::S, Tetromino::Z, Tetromino::J, Tetromino::Z
+    Tetromino::I, Tetromino::J, Tetromino::L,
+    Tetromino::O, Tetromino::S, Tetromino::T, Tetromino::Z
 };
 
 Tetromino Tetromino::I() {

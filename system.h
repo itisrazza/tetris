@@ -10,18 +10,22 @@
 
 // the game system -- or engine if you prefer
 class GameSystem {
+public:
     // screen size
-    const unsigned int SCREEN_WIDTH = 640;
-    const unsigned int SCREEN_HEIGHT = 360;
+    static const unsigned int SCREEN_WIDTH = 640;
+    static const unsigned int SCREEN_HEIGHT = 360;
 
+private:
     // currently focused mode
     GameMode* mode = nullptr;
 
     // awaiting quit
     int exit_code = 0;
+public:
     bool quit_triggered = false;
     bool quit_now = false;
 
+private:
     // game window
     SDL_Window* window = nullptr;
     TTF_Font* font = nullptr;

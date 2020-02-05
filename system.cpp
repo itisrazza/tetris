@@ -64,7 +64,7 @@ void GameSystem::common_ctor()
     }
 
     // start with a title screen
-    set_mode(new TetrisMode());
+    set_mode(new TitleScreen());
 }
 
 GameSystem::GameSystem()
@@ -108,7 +108,9 @@ void GameSystem::event_loop()
         if (ev.type == SDL_KEYDOWN) {
             // global key events
 
-            if (ev.key.keysym.sym == SDLK_ESCAPE) /* send SDL_QUIT event */;
+            if (ev.key.keysym.sym == SDLK_ESCAPE) {
+                quit_now = true;
+            }
             if (ev.key.keysym.sym == SDLK_F11) {
                 int full_screen = SDL_GetWindowFlags(window) & SDL_WINDOW_FULLSCREEN_DESKTOP;
                 SDL_SetWindowFullscreen(window, full_screen ? 0 : SDL_WINDOW_FULLSCREEN_DESKTOP);

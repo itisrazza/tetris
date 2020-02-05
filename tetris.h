@@ -16,7 +16,10 @@ class TetrisMode : public GameMode {
 
     SDL_TimerID tick_timer_id = 0;
 
-    unsigned int level;                     // currently playing level
+    unsigned int level = 1;                 // currently playing level
+    unsigned int score = 0;                 // score
+    unsigned int lines = 0;                 // lines cleared
+
     Tetromino tetromino_current;            // current tetromino
     Tetromino tetromino_held;               // tetromino on "hold"
 
@@ -24,6 +27,7 @@ class TetrisMode : public GameMode {
     int tetromino_row;                      // position of the currently active tetromino
     int tetromino_col;                      // position of the currently active tetromino
     void tetromino_new();                   // retrieves a new tetromino
+    void tetromino_new(bool deque);         // reset tetromino without deque
     bool tetromino_collides();              // checks if tetromino collides with anything
     void tetromino_commit();                // commits the tetromino to the matrix
     void tetromino_bag_generate();          // generate a new tetromino bag
@@ -45,7 +49,25 @@ class TetrisMode : public GameMode {
     Tetromino get_held_tetromino();
     Tetromino get_next_tetromino();
 
+    void tick_game();
+    void tick_gameover();
+
     struct color { char r; char g; char b; };
+
+    enum class TetrominoSource {
+        BAG,
+        HOLD
+    };
+    TetrominoSource tetromino_source = TetrominoSource::BAG;
+
+    enum class State {
+        PLAYING,
+        GAME_OVER
+    };
+public:
+    State state;
+private:
+    int gameover_row = 0;
 
 public:
     TetrisMode();

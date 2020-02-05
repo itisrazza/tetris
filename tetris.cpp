@@ -11,9 +11,12 @@
 #include <SDL.h>
 #include <SDL_ttf.h>
 
+#include "title.h"
+
 TetrisMode::TetrisMode()
 {
     level = 0;
+    state = State::PLAYING;
 
     srand(time(nullptr));
     tetromino_bag_generate();
@@ -22,7 +25,7 @@ TetrisMode::TetrisMode()
     tick_timer_id = SDL_AddTimer(1000, [](uint32_t interval, void* userdata) -> uint32_t {
         TetrisMode* tetris_mode = (TetrisMode*)userdata;
         tetris_mode->tick();
-        return 1000;
+        return tetris_mode->state == State::GAME_OVER ? 50 : 1000;
     }, this);
 
     // userevent_game_over = SDL_RegisterEvents(3);
@@ -36,6 +39,7 @@ TetrisMode::TetrisMode()
 
 TetrisMode::~TetrisMode()
 {
+    SDL_RemoveTimer(tick_timer_id);
 }
 
 void TetrisMode::initialise()
@@ -104,18 +108,53 @@ void TetrisMode::draw(SDL_Surface* surface)
     rect.h = hold_tetromino->h;
     SDL_BlitSurface(hold_tetromino, nullptr, surface, &rect);
     SDL_FreeSurface(hold_tetromino);
+
+    // game over
+    if (state == State::GAME_OVER && gameover_row > 20) {
+        SDL_Surface* gameover_text = TTF_RenderUTF8_Solid(font, "GAME  OVER", color);
+        rect.w = gameover_text->w;
+        rect.h = gameover_text->h;
+        rect.x = GameSystem::SCREEN_WIDTH / 2 - rect.w / 2;
+        rect.y = 16 * 8;
+        SDL_BlitSurface(gameover_text, nullptr, surface, &rect);
+        SDL_FreeSurface(gameover_text);
+
+        gameover_text = TTF_RenderUTF8_Solid(font, " Press [ENTER] to ", color);
+        rect.w = gameover_text->w;
+        rect.h = gameover_text->h;
+        rect.x = GameSystem::SCREEN_WIDTH / 2 - rect.w / 2;
+        rect.y = 16 * 16;
+        SDL_BlitSurface(gameover_text, nullptr, surface, &rect);
+        SDL_FreeSurface(gameover_text);
+
+        gameover_text = TTF_RenderUTF8_Solid(font, "    start over.   ", color);
+        rect.w = gameover_text->w;
+        rect.h = gameover_text->h;
+        rect.x = GameSystem::SCREEN_WIDTH / 2 - rect.w / 2;
+        rect.y = 17 * 16;
+        SDL_BlitSurface(gameover_text, nullptr, surface, &rect);
+        SDL_FreeSurface(gameover_text);
+    }
 }
 
 void TetrisMode::handle_event(SDL_Event& ev)
 {
     if (ev.type == SDL_KEYDOWN) {
-        if (ev.key.keysym.sym == SDLK_a) move_left();
-        if (ev.key.keysym.sym == SDLK_d) move_right();
-        if (ev.key.keysym.sym == SDLK_w) hard_drop();
-        if (ev.key.keysym.sym == SDLK_s) soft_drop();
-        if (ev.key.keysym.sym == SDLK_q) rotate_counterclockwise();
-        if (ev.key.keysym.sym == SDLK_e) rotate_clockwise();
-        if (ev.key.keysym.sym == SDLK_h) tetromino_hold();
+        if (state == State::PLAYING) {
+            if (ev.key.keysym.sym == SDLK_a) move_left();
+            if (ev.key.keysym.sym == SDLK_d) move_right();
+            if (ev.key.keysym.sym == SDLK_w) hard_drop();
+            if (ev.key.keysym.sym == SDLK_s) soft_drop();
+            if (ev.key.keysym.sym == SDLK_q) rotate_counterclockwise();
+            if (ev.key.keysym.sym == SDLK_e) rotate_clockwise();
+            if (ev.key.keysym.sym == SDLK_h) tetromino_hold();
+        }
+
+        if (state == State::GAME_OVER) {
+            if (ev.key.keysym.sym == SDLK_RETURN || ev.key.keysym.sym == SDLK_RETURN2) {
+                game_system->set_mode(new TitleScreen());
+            }
+        }
     }
 }
 
@@ -134,24 +173,32 @@ void TetrisMode::tetromino_bag_generate()
 
 void TetrisMode::tetromino_new()
 {
+    tetromino_new(true);
+}
+
+void TetrisMode::tetromino_new(bool deque)
+{
     // deque tetromino from bag
-    tetromino_current = tetromino_bag.back();
-    tetromino_bag.pop_back();
-    
+    if (deque) {
+        tetromino_current = tetromino_bag.back();
+        tetromino_bag.pop_back();
+    }
+
     tetromino_row = 20;
     tetromino_col = 4;
 
     if (tetromino_collides()) {
         // that's it game over
-        SDL_Event event;
-        SDL_zero(event);
-        // event.type = userevent_game_over;
+        gameover_row = 0;
+        state = State::GAME_OVER;
 
-        // SDL_PushEvent(&event);
+        tetromino_current.nil = true;
     }
 
     // generate bag if empty
     if (tetromino_bag.empty()) tetromino_bag_generate();
+
+    tetromino_source = TetrominoSource::BAG;
 }
 
 bool TetrisMode::tetromino_collides()
@@ -207,7 +254,7 @@ Block TetrisMode::block_at(int x, int y, bool include_tetromino)
     Block block = matrix[y][x];
 
     // tetromino?
-    if (include_tetromino) {
+    if (include_tetromino && !tetromino_current.nil) {
         if (y >= tetromino_row && y < tetromino_row + 4 &&
             x >= tetromino_col && x < tetromino_col + 4) {
 
@@ -226,6 +273,12 @@ Block TetrisMode::block_at(int x, int y)
 }
 
 void TetrisMode::tick()
+{
+    if (state == State::PLAYING) tick_game();
+    if (state == State::GAME_OVER) tick_gameover();
+}
+
+void TetrisMode::tick_game()
 {
     // A big ball of wibbly wobbly, timey wimey stuff
 
@@ -264,6 +317,22 @@ void TetrisMode::tick()
             line_check_row++;
         }
     }
+}
+
+void TetrisMode::tick_gameover()
+{
+    if (gameover_row > 20) return;
+
+    Block block;
+    block.red = 0x20;
+    block.green = 0x20;
+    block.blue = 0x20;
+    block.nil = true;
+
+    for (int x = 0; x < MATRIX_COLS; x++) {
+        matrix[gameover_row][x] = block;
+    }
+    gameover_row++;
 }
 
 void TetrisMode::move_left()
@@ -348,8 +417,19 @@ void TetrisMode::tetromino_hold()
     // copy the tetromino over and issue a new one
     // todo: cannot hold again until next tetromino
 
+    if (tetromino_source == TetrominoSource::HOLD) return;
+    if (tetromino_current.nil) return;
+    
+    Tetromino held = tetromino_held;
     tetromino_held = tetromino_current;
-    tetromino_new();
+    if (held.nil) {
+        tetromino_new();
+    } else {
+        tetromino_current = held;
+        tetromino_new(false);
+    }
+
+    tetromino_source = TetrominoSource::HOLD;
 }
 
 SDL_Surface* TetrisMode::render_tetromino(Tetromino tetromino)

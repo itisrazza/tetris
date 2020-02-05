@@ -5,6 +5,8 @@
 #include "mode.h"
 
 class TitleScreen : public GameMode {
+    SDL_Surface* title_image;
+
 public:
     TitleScreen();
     ~TitleScreen();
