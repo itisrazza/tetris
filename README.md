@@ -22,13 +22,26 @@ After that: `make && ./tetris`
 | D | Move right |
 | Q | Rotate counterclockwise |
 | E | Rotate clockwise |
+| H | Hold tetromino |
 | F11 | Toggle full screen |
 | ESC | Quit game |
+
+## Acknowledgements
+
+### Original Work
+
+The original concept was made by Alexei Pajitnov at the Soviet Academy of Sciences in Moscow and has since exploded in popularity.
+
+### Font
+
+`font.ttf` is from the Ultimate Old-School PC Font Pack made by VileR and is licensed under [Creative License Attribution-ShareAlike 4.0 International License](https://creativecommons.org/licenses/by-sa/4.0/).
+
+You can get the original font and a lot more from: https://int10h.org/oldschool-pc-fonts/
 
 ## Wishlist
 
 - [ ] Add a HUD to the game
-- [ ] Add the ability to "hold" a piece
+- [x] Add the ability to "hold" a piece
 - [ ] Add a scoring system
 - [ ] Add my own music synth (sampled audio is overrated)
   - [ ] Add chiptune [Korobeiniki]

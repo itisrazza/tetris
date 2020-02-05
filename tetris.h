@@ -7,37 +7,34 @@
 
 class TetrisGame {
 public:
-    enum class Status {
-        NORMAL_PLAY,
-        LINE_CLEAR,
-        GAME_OVER
-    };
+    uint32_t userevent_game_over;
+    uint32_t userevent_line_clear;
+    uint32_t userevent_hard_drop;
 
-    Status status;
-    int status_tick;
-
-    typedef unsigned int position_t;
+    typedef unsigned int position_t;    // block positions
+    typedef void (*gameover_cb_t)();    // gameover callback prototype
 
     static const unsigned int MATRIX_COLS = 10;          // matrix columns
     static const unsigned int MATRIX_ROWS = 40;          // matrix rows
     static const unsigned int MATRIX_VISIBLE_ROWS = 20;  // visible matrix rows
 
-    static const uint32_t level_intervals[];
-
 private:
-    SDL_Surface* block_texture;
+    unsigned int level;                     // currently playing level
 
-    unsigned int level;
+    Block matrix[MATRIX_ROWS][MATRIX_COLS]; // metrix
 
-    Block matrix[MATRIX_ROWS][MATRIX_COLS];
+    Tetromino tetromino_current;            // current tetromino
+    Tetromino tetromino_held;               // tetromino on "hold"
 
-    Tetromino tetromino_current;
-    std::vector<Tetromino> tetromino_bag;
-    int tetromino_row;
-    int tetromino_col;
-    void tetromino_new();
-    bool tetromino_collides();
-    void tetromino_commit();
+    std::vector<Tetromino> tetromino_bag;   // randomised list of upcoming tetrominoes
+    int tetromino_row;                      // position of the currently active tetromino
+    int tetromino_col;                      // position of the currently active tetromino
+    void tetromino_new();                   // retrieves a new tetromino
+    bool tetromino_collides();              // checks if tetromino collides with anything
+    void tetromino_commit();                // commits the tetromino to the matrix
+    void tetromino_bag_generate();          // generate a new tetromino bag
+
+    gameover_cb_t gameover_cb;              // callback for gameover event
 
 public:
     TetrisGame();
@@ -49,10 +46,17 @@ public:
     Block block_at(int x, int y);
     Block block_at(int x, int y, bool include_tetromino);
 
+    void set_gameover_cb(gameover_cb_t);
+
     void move_left();
     void move_right();
     void soft_drop();
     void hard_drop();
     void rotate_clockwise();
     void rotate_counterclockwise();
+    
+    void tetromino_hold();
+
+    Tetromino get_held_tetromino();
+    Tetromino get_next_tetromino();
 };

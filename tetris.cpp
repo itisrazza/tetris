@@ -1,42 +1,51 @@
 
 #include "tetris.h"
 
+#include <algorithm>
 #include <ctime>
 #include <cstdlib>
-#include <algorithm>
+#include <exception>
+#include <system_error>
 #include <random>
+
+#include <SDL.h>
 
 TetrisGame::TetrisGame()
 {
-    block_texture = nullptr;    // just go solid
     level = 0;
 
     srand(time(nullptr));
+    tetromino_bag_generate();
     tetromino_new();
+
+    userevent_game_over = SDL_RegisterEvents(3);
+    if (userevent_game_over == (uint32_t) -1) {
+        throw std::runtime_error("Failed to register events.");
+    }
+
+    userevent_hard_drop = userevent_game_over + 1;
+    userevent_line_clear = userevent_hard_drop + 1;
 }
 
 TetrisGame::~TetrisGame()
 {
-    if (block_texture != nullptr) {
-        SDL_FreeSurface(block_texture);
+}
+
+void TetrisGame::tetromino_bag_generate()
+{
+    // generate back
+    for (int i = 0; i < Tetromino::tetrominoes_count; i++) {
+        tetromino_bag.push_back(Tetromino::tetrominoes[i]());
     }
+
+    // randomise list
+    std::random_device rd;
+    std::mt19937 g(rd());
+    std::shuffle(tetromino_bag.begin(), tetromino_bag.end(), g);
 }
 
 void TetrisGame::tetromino_new()
 {
-    // generate bag if empty
-    if (tetromino_bag.empty()) {
-        // generate back
-        for (int i = 0; i < Tetromino::tetrominoes_count; i++) {
-            tetromino_bag.push_back(Tetromino::tetrominoes[i]());
-        }
-
-        // randomise list
-        std::random_device rd;
-        std::mt19937 g(rd());
-        std::shuffle(tetromino_bag.begin(), tetromino_bag.end(), g);
-    }
-
     // deque tetromino from bag
     tetromino_current = tetromino_bag.back();
     tetromino_bag.pop_back();
@@ -46,9 +55,15 @@ void TetrisGame::tetromino_new()
 
     if (tetromino_collides()) {
         // that's it game over
-        status = Status::GAME_OVER;
-        status_tick = -1;
+        SDL_Event event;
+        SDL_zero(event);
+        event.type = userevent_game_over;
+
+        SDL_PushEvent(&event);
     }
+
+    // generate bag if empty
+    if (tetromino_bag.empty()) tetromino_bag_generate();
 }
 
 bool TetrisGame::tetromino_collides()
@@ -153,7 +168,7 @@ void TetrisGame::tick()
         if (block_count == MATRIX_COLS) {
             // line cleared, copy down the line from above
             for (int copy_row = line_check_row; copy_row < MATRIX_ROWS - 1; copy_row++) {
-                for (int copy_col = 0; copy_col < MATRIX_COLS - 1; copy_col++) {
+                for (int copy_col = 0; copy_col < MATRIX_COLS; copy_col++) {
                     matrix[copy_row][copy_col] = matrix[copy_row + 1][copy_col];
                 }
             }
@@ -238,4 +253,25 @@ void TetrisGame::rotate_counterclockwise()
 
     if (tetromino_collides()) rotate_clockwise();
 
+}
+
+void TetrisGame::tetromino_hold()
+{
+    // copy the tetromino over and issue a new one
+    // todo: cannot hold again until next tetromino
+
+    tetromino_held = tetromino_current;
+    tetromino_new();
+}
+
+Tetromino TetrisGame::get_next_tetromino()
+{
+    // generate bag if empty
+    if (tetromino_bag.empty()) tetromino_bag_generate();
+    return tetromino_bag[tetromino_bag.size() - 1];
+}
+
+Tetromino TetrisGame::get_held_tetromino()
+{
+    return tetromino_held;
 }
