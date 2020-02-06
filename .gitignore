@@ -4,3 +4,5 @@
 tetris
 *.exe
 *.dll
+/.win32
+/Debug

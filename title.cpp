@@ -57,7 +57,7 @@ void TitleScreen::draw(SDL_Surface* surface)
     SDL_BlitSurface(top_score, nullptr, surface, &rect);
     SDL_FreeSurface(top_score);
 
-    SDL_Surface* copyright = TTF_RenderUTF8_Solid(font, "© 2020  Raresh Nistor / Рареш Нистор", color);
+    SDL_Surface* copyright = TTF_RenderUTF8_Solid(font, "© 2020 Raresh Nistor", color);
     rect.x = GameSystem::SCREEN_WIDTH / 2 - press_start->w / 2;
     rect.y += 16 * 2;
     rect.w = copyright->w;

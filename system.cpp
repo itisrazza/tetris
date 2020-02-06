@@ -80,9 +80,19 @@ GameSystem::GameSystem(std::vector<std::string>& args)
 
 GameSystem::~GameSystem()
 {
-    SDL_Log("Descructing system.");
+	SDL_Log("Descructing system.");
+
+	// deinit mode
+	mode->deinitialise();
+	delete mode;
+
+	// free SDL resources
     SDL_DestroyWindow(window);
     TTF_CloseFont(font);
+
+	// close libraries
+	TTF_Quit();
+	SDL_Quit();
 }
 
 //
@@ -128,6 +138,7 @@ void GameSystem::run()
     draw_timer_id = SDL_AddTimer(draw_interval, [](uint32_t interval, void* userdata) -> uint32_t {
         GameSystem* game_system = (GameSystem*)userdata;
         game_system->draw_callback(interval, userdata);
+		return interval;
     }, this);
 
     // wait for quitting and dequeue events
@@ -155,7 +166,9 @@ uint32_t GameSystem::draw_callback(uint32_t interval, void* userdata)
     }
     
     // pass it down to be edited by focused mode
-    mode->draw(surface);
+	if (mode != nullptr) {
+		mode->draw(surface);
+	}
 
     // blit it to window and go
     SDL_Surface* window_surface = SDL_GetWindowSurface(window);
@@ -175,7 +188,7 @@ void GameSystem::set_draw_interval(uint32_t interval)
 
 void GameSystem::set_draw_target_fps(double target_fps)
 {
-    draw_interval = 1000 / target_fps;
+    draw_interval = (int)(1000 / target_fps);
 }
 
 //

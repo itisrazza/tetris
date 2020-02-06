@@ -120,18 +120,23 @@ void TetrisMode::draw(SDL_Surface* surface)
     SDL_BlitSurface(hold_tetromino, nullptr, surface, &rect);
     SDL_FreeSurface(hold_tetromino);
 
+	//
+	// heads-up display
+	//
+	
+	rect.x = 51 * 8;
+	rect.y = 10 * 16;
+
     // score
     char score_string[64];
     sprintf(score_string, "SCORE: %8d", score);
     SDL_Surface* score_text = TTF_RenderUTF8_Solid(font, score_string, color);
     rect.w = score_text->w;
     rect.h = score_text->h;
-    rect.x = 60 * 8;
-    rect.y = 16 * 5;
     SDL_BlitSurface(score_text, nullptr, surface, &rect);
     SDL_FreeSurface(score_text);
 
-    // score
+    // level
     char level_string[64];
     sprintf(level_string, "LEVEL: %8d", level);
     SDL_Surface* level_text = TTF_RenderUTF8_Solid(font, level_string, color);
