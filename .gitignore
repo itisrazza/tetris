@@ -1,8 +1,3 @@
-*.o
-.vscode
-*~
-tetris
-*.exe
-*.dll
-/.win32
-/Debug
+bin/
+obj/
+.vscode/

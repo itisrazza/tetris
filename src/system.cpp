@@ -2,10 +2,12 @@
 #include "system.h"
 
 #include <exception>
+#include <string>
 #include <system_error>
 
-#include "title.h"
+#include "data.h"
 #include "tetris.h"
+#include "title.h"
 
 using namespace std::string_literals;
 
@@ -15,7 +17,8 @@ GameSystem* game_system = nullptr;
 // main -> GameSystem bootstrap
 //
 
-int main(int argc, char** argv) {
+int main(int argc, char** argv)
+{
     SDL_Log("Starting Tetris.");
 
     // aggregate argv into a vector
@@ -51,14 +54,15 @@ void GameSystem::common_ctor()
 
     // create window
     window = SDL_CreateWindow("Тетрис Рареша | Raresh's Tetris",
-                              SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
-                              SCREEN_WIDTH, SCREEN_HEIGHT, 0);
+        SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
+        SCREEN_WIDTH, SCREEN_HEIGHT, 0);
     if (window == nullptr) {
         throw std::runtime_error("Failed to create window: "s + SDL_GetError());
     }
 
     // load font
-    font = TTF_OpenFont("font.ttf", 16);
+
+    font = TTF_OpenFontRW(SDL_RWFromMem(data_font, data_font_size), true, 16);
     if (font == nullptr) {
         throw std::runtime_error("Failed to load font: "s + SDL_GetError());
     }
@@ -80,19 +84,19 @@ GameSystem::GameSystem(std::vector<std::string>& args)
 
 GameSystem::~GameSystem()
 {
-	SDL_Log("Descructing system.");
+    SDL_Log("Descructing system.");
 
-	// deinit mode
-	mode->deinitialise();
-	delete mode;
+    // deinit mode
+    mode->deinitialise();
+    delete mode;
 
-	// free SDL resources
+    // free SDL resources
     SDL_DestroyWindow(window);
     TTF_CloseFont(font);
 
-	// close libraries
-	TTF_Quit();
-	SDL_Quit();
+    // close libraries
+    TTF_Quit();
+    SDL_Quit();
 }
 
 //
@@ -114,7 +118,7 @@ void GameSystem::event_loop()
                 quit_triggered = true;
             }
         }
-        
+
         if (ev.type == SDL_KEYDOWN) {
             // global key events
 
@@ -128,21 +132,25 @@ void GameSystem::event_loop()
         }
 
         // pass the event down to current mode
-        if (mode != nullptr) mode->handle_event(ev);
+        if (mode != nullptr)
+            mode->handle_event(ev);
     }
 }
 
 void GameSystem::run()
 {
     // register draw timer
-    draw_timer_id = SDL_AddTimer(draw_interval, [](uint32_t interval, void* userdata) -> uint32_t {
-        GameSystem* game_system = (GameSystem*)userdata;
-        game_system->draw_callback(interval, userdata);
-		return interval;
-    }, this);
+    draw_timer_id = SDL_AddTimer(
+        draw_interval, [](uint32_t interval, void* userdata) -> uint32_t {
+            GameSystem* game_system = (GameSystem*)userdata;
+            game_system->draw_callback(interval, userdata);
+            return interval;
+        },
+        this);
 
     // wait for quitting and dequeue events
-    while (!quit_now) event_loop();
+    while (!quit_now)
+        event_loop();
 }
 
 //
@@ -151,24 +159,27 @@ void GameSystem::run()
 
 uint32_t GameSystem::draw_callback(uint32_t interval, void* userdata)
 {
-    if (draw_block) return draw_interval;
-    if (draw_progress) return draw_interval;
-    if (mode == nullptr) return draw_interval;
+    if (draw_block)
+        return draw_interval;
+    if (draw_progress)
+        return draw_interval;
+    if (mode == nullptr)
+        return draw_interval;
 
     draw_progress = true;
-    
+
     // create screen surface
     SDL_Surface* surface = SDL_CreateRGBSurface(0,
-                                                SCREEN_WIDTH, SCREEN_HEIGHT,
-                                                24, 0, 0, 0, 0);
+        SCREEN_WIDTH, SCREEN_HEIGHT,
+        24, 0, 0, 0, 0);
     if (surface == nullptr) {
         throw std::runtime_error("Failed to create surface: "s + SDL_GetError());
     }
-    
+
     // pass it down to be edited by focused mode
-	if (mode != nullptr) {
-		mode->draw(surface);
-	}
+    if (mode != nullptr) {
+        mode->draw(surface);
+    }
 
     // blit it to window and go
     SDL_Surface* window_surface = SDL_GetWindowSurface(window);

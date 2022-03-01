@@ -2,15 +2,16 @@
 #include "tetris.h"
 
 #include <algorithm>
-#include <ctime>
 #include <cstdlib>
+#include <ctime>
 #include <exception>
-#include <system_error>
 #include <random>
+#include <system_error>
 
 #include <SDL.h>
 #include <SDL_ttf.h>
 
+#include "data.h"
 #include "title.h"
 
 TetrisMode::TetrisMode()
@@ -24,16 +25,18 @@ TetrisMode::TetrisMode()
     tetromino_bag_generate();
     tetromino_new();
 
-    background = SDL_LoadBMP("background.bmp");
+    background = SDL_LoadBMP_RW(SDL_RWFromMem(data_background, data_background_size), true);
     if (background == nullptr) {
         throw std::runtime_error("Failed to load title image: "s + SDL_GetError());
     }
 
-    tick_timer_id = SDL_AddTimer(1000, [](uint32_t interval, void* userdata) -> uint32_t {
-        TetrisMode* tetris_mode = (TetrisMode*)userdata;
-        tetris_mode->tick();
-        return tetris_mode->state == State::GAME_OVER ? 50 : 1000;
-    }, this);
+    tick_timer_id = SDL_AddTimer(
+        1000, [](uint32_t interval, void* userdata) -> uint32_t {
+            TetrisMode* tetris_mode = (TetrisMode*)userdata;
+            tetris_mode->tick();
+            return tetris_mode->state == State::GAME_OVER ? 50 : 1000;
+        },
+        this);
 
     // userevent_game_over = SDL_RegisterEvents(3);
     // if (userevent_game_over == (uint32_t) -1) {
@@ -52,26 +55,23 @@ TetrisMode::~TetrisMode()
 
 void TetrisMode::initialise()
 {
-
 }
 
 void TetrisMode::deinitialise()
 {
-
 }
 
 void TetrisMode::draw(SDL_Surface* surface)
-{   
+{
     auto font = game_system->get_font();
 
     SDL_BlitScaled(background, nullptr, surface, nullptr);
 
-
     // draw the matrix on-screen
     SDL_Surface* matrix_surface = render_matrix();
     SDL_Rect rect = { surface->w / 2 - matrix_surface->w / 2,
-                      surface->h / 2 - matrix_surface->h / 2,
-                      matrix_surface->w, matrix_surface->h };
+        surface->h / 2 - matrix_surface->h / 2,
+        matrix_surface->w, matrix_surface->h };
 
     // draw border
     rect.x -= 1;
@@ -120,12 +120,12 @@ void TetrisMode::draw(SDL_Surface* surface)
     SDL_BlitSurface(hold_tetromino, nullptr, surface, &rect);
     SDL_FreeSurface(hold_tetromino);
 
-	//
-	// heads-up display
-	//
-	
-	rect.x = 51 * 8;
-	rect.y = 10 * 16;
+    //
+    // heads-up display
+    //
+
+    rect.x = 51 * 8;
+    rect.y = 10 * 16;
 
     // score
     char score_string[64];
@@ -155,7 +155,7 @@ void TetrisMode::draw(SDL_Surface* surface)
     rect.y += 16;
     SDL_BlitSurface(lines_text, nullptr, surface, &rect);
     SDL_FreeSurface(lines_text);
-    
+
     // game over
     if (state == State::GAME_OVER && gameover_row > 20) {
         SDL_Surface* gameover_text = TTF_RenderUTF8_Solid(font, "GAME  OVER", color);
@@ -188,13 +188,20 @@ void TetrisMode::handle_event(SDL_Event& ev)
 {
     if (ev.type == SDL_KEYDOWN) {
         if (state == State::PLAYING) {
-            if (ev.key.keysym.sym == SDLK_LEFT) move_left();
-            if (ev.key.keysym.sym == SDLK_RIGHT) move_right();
-            if (ev.key.keysym.sym == SDLK_SPACE) hard_drop();
-            if (ev.key.keysym.sym == SDLK_DOWN) soft_drop();
-            if (ev.key.keysym.sym == SDLK_UP) rotate_counterclockwise();
-            if (ev.key.keysym.sym == SDLK_END) rotate_clockwise();
-            if (ev.key.keysym.sym == SDLK_h) tetromino_hold();
+            if (ev.key.keysym.sym == SDLK_LEFT)
+                move_left();
+            if (ev.key.keysym.sym == SDLK_RIGHT)
+                move_right();
+            if (ev.key.keysym.sym == SDLK_SPACE)
+                hard_drop();
+            if (ev.key.keysym.sym == SDLK_DOWN)
+                soft_drop();
+            if (ev.key.keysym.sym == SDLK_UP)
+                rotate_counterclockwise();
+            if (ev.key.keysym.sym == SDLK_END)
+                rotate_clockwise();
+            if (ev.key.keysym.sym == SDLK_h)
+                tetromino_hold();
         }
 
         if (state == State::GAME_OVER) {
@@ -243,7 +250,8 @@ void TetrisMode::tetromino_new(bool deque)
     }
 
     // generate bag if empty
-    if (tetromino_bag.empty()) tetromino_bag_generate();
+    if (tetromino_bag.empty())
+        tetromino_bag_generate();
 
     tetromino_source = TetrominoSource::BAG;
 }
@@ -253,7 +261,8 @@ bool TetrisMode::tetromino_collides()
     for (int row = 0; row < 4; row++) {
         for (int col = 0; col < 4; col++) {
             // ignore blocks that aren't blocks
-            if (tetromino_current.blocks[row][col].nil) continue;
+            if (tetromino_current.blocks[row][col].nil)
+                continue;
 
             // simple boundary checks
             if (tetromino_col + col < 0 || tetromino_col + col >= MATRIX_COLS)
@@ -262,7 +271,8 @@ bool TetrisMode::tetromino_collides()
                 return true;
 
             Block matrix_block = block_at(tetromino_col + col, tetromino_row + row, false);
-            if (!matrix_block.nil) return true;
+            if (!matrix_block.nil)
+                return true;
         }
     }
     return false;
@@ -273,11 +283,14 @@ void TetrisMode::tetromino_commit()
     for (int row = 0; row < 4; row++) {
         for (int col = 0; col < 4; col++) {
             // array index check
-            if (tetromino_col + col >= MATRIX_COLS) continue;
-            if (tetromino_row + row >= MATRIX_ROWS) continue;
+            if (tetromino_col + col >= MATRIX_COLS)
+                continue;
+            if (tetromino_row + row >= MATRIX_ROWS)
+                continue;
 
             Block tetromino_block = tetromino_current.blocks[row][col];
-            if (tetromino_block.nil) continue;
+            if (tetromino_block.nil)
+                continue;
             matrix[tetromino_row + row][tetromino_col + col] = tetromino_block;
         }
     }
@@ -302,11 +315,11 @@ Block TetrisMode::block_at(int x, int y, bool include_tetromino)
 
     // tetromino?
     if (include_tetromino && !tetromino_current.nil) {
-        if (y >= tetromino_row && y < tetromino_row + 4 &&
-            x >= tetromino_col && x < tetromino_col + 4) {
+        if (y >= tetromino_row && y < tetromino_row + 4 && x >= tetromino_col && x < tetromino_col + 4) {
 
             Block tetromino = tetromino_current.blocks[y - tetromino_row][x - tetromino_col];
-            if (tetromino.nil) return block;
+            if (tetromino.nil)
+                return block;
             return tetromino;
         }
     }
@@ -321,8 +334,10 @@ Block TetrisMode::block_at(int x, int y)
 
 void TetrisMode::tick()
 {
-    if (state == State::PLAYING) tick_game();
-    if (state == State::GAME_OVER) tick_gameover();
+    if (state == State::PLAYING)
+        tick_game();
+    if (state == State::GAME_OVER)
+        tick_gameover();
 }
 
 void TetrisMode::tick_game()
@@ -335,7 +350,8 @@ void TetrisMode::tick_game()
     // if tetromino collides
     if (tetromino_collides()) {
         tetromino_row++;
-        if (tetromino_row >= MATRIX_ROWS) tetromino_row = 0;
+        if (tetromino_row >= MATRIX_ROWS)
+            tetromino_row = 0;
 
         // commit tetromino
         tetromino_commit();
@@ -349,9 +365,10 @@ void TetrisMode::tick_game()
     int line_check_row = 0;
     while (line_check_row < MATRIX_ROWS) {
         int block_count = 0;
-        
+
         for (int col = 0; col < MATRIX_COLS; col++) {
-            if (!block_at(col, line_check_row, false).nil) block_count++;
+            if (!block_at(col, line_check_row, false).nil)
+                block_count++;
         }
 
         if (block_count == MATRIX_COLS) {
@@ -372,7 +389,8 @@ void TetrisMode::tick_game()
     if (line_clear > 0) {
         float multiplier = 100;
         multiplier += 200 * (line_clear - 1);
-        if (line_clear == 4) multiplier += 100;
+        if (line_clear == 4)
+            multiplier += 100;
         score += multiplier * level;
         SDL_Log("Line clear: %d lines : x%f multiplier", line_clear, multiplier);
 
@@ -382,7 +400,8 @@ void TetrisMode::tick_game()
 
 void TetrisMode::tick_gameover()
 {
-    if (gameover_row > 20) return;
+    if (gameover_row > 20)
+        return;
 
     Block block;
     block.red = 0x20;
@@ -399,13 +418,15 @@ void TetrisMode::tick_gameover()
 void TetrisMode::move_left()
 {
     tetromino_col--;
-    if (tetromino_collides()) tetromino_col++;
+    if (tetromino_collides())
+        tetromino_col++;
 }
 
 void TetrisMode::move_right()
 {
     tetromino_col++;
-    if (tetromino_collides()) tetromino_col--;
+    if (tetromino_collides())
+        tetromino_col--;
 }
 
 void TetrisMode::soft_drop()
@@ -413,11 +434,12 @@ void TetrisMode::soft_drop()
     tetromino_row--;
     score += 1;
     SDL_Log("Soft drop: 1 row");
-    
+
     // if tetromino collides
     if (tetromino_collides()) {
         tetromino_row++;
-        if (tetromino_row >= MATRIX_ROWS) tetromino_row = 0;
+        if (tetromino_row >= MATRIX_ROWS)
+            tetromino_row = 0;
 
         // commit tetromino
         tetromino_commit();
@@ -437,7 +459,8 @@ void TetrisMode::hard_drop()
     }
 
     tetromino_row++;
-    if (tetromino_row >= MATRIX_ROWS) tetromino_row = 0;
+    if (tetromino_row >= MATRIX_ROWS)
+        tetromino_row = 0;
 
     row_diff = abs(tetromino_row - row_start);
     score += 2 * SDL_abs(row_start - tetromino_row);
@@ -462,7 +485,8 @@ void TetrisMode::rotate_clockwise()
         }
     }
 
-    if (tetromino_collides()) rotate_counterclockwise();
+    if (tetromino_collides())
+        rotate_counterclockwise();
 }
 
 void TetrisMode::rotate_counterclockwise()
@@ -479,8 +503,8 @@ void TetrisMode::rotate_counterclockwise()
         }
     }
 
-    if (tetromino_collides()) rotate_clockwise();
-
+    if (tetromino_collides())
+        rotate_clockwise();
 }
 
 void TetrisMode::tetromino_hold()
@@ -488,9 +512,11 @@ void TetrisMode::tetromino_hold()
     // copy the tetromino over and issue a new one
     // todo: cannot hold again until next tetromino
 
-    if (tetromino_source == TetrominoSource::HOLD) return;
-    if (tetromino_current.nil) return;
-    
+    if (tetromino_source == TetrominoSource::HOLD)
+        return;
+    if (tetromino_current.nil)
+        return;
+
     Tetromino held = tetromino_held;
     tetromino_held = tetromino_current;
     if (held.nil) {
@@ -505,10 +531,10 @@ void TetrisMode::tetromino_hold()
 
 SDL_Surface* TetrisMode::render_tetromino(Tetromino tetromino)
 {
-auto surface = SDL_CreateRGBSurface(0,
-                                        BLOCK_SIZE * 4, BLOCK_SIZE * 4,
-                                        24, 0, 0, 0, 0);
-    color white = { (char)0x80, (char)0x80, (char)0x80 };    
+    auto surface = SDL_CreateRGBSurface(0,
+        BLOCK_SIZE * 4, BLOCK_SIZE * 4,
+        24, 0, 0, 0, 0);
+    color white = { (char)0x80, (char)0x80, (char)0x80 };
 
     SDL_Rect rect = { 0, 0, BLOCK_SIZE, BLOCK_SIZE };
 
@@ -521,7 +547,7 @@ auto surface = SDL_CreateRGBSurface(0,
             int base_y = y * BLOCK_SIZE;
 
             for (int x = 0; x < rect.w; x++) {
-                pixels[(base_y) * surface->w + base_x + x] = white;
+                pixels[(base_y)*surface->w + base_x + x] = white;
                 pixels[(base_y + rect.h - 1) * surface->w + base_x + x] = white;
             }
             for (int y = 0; y < rect.h; y++) {
@@ -543,11 +569,12 @@ auto surface = SDL_CreateRGBSurface(0,
     for (int row = 3; row >= 0; row--) {
         for (int col = 0; col < 4; col++) {
             Block block = tetromino.blocks[row][col];
-            if (block.nil) continue;
+            if (block.nil)
+                continue;
 
             auto color = SDL_MapRGB(surface->format, block.red, block.green, block.blue);
             SDL_FillRect(surface, &rect, color);
-            
+
             rect.x += rect.w;
         }
 
@@ -561,9 +588,9 @@ auto surface = SDL_CreateRGBSurface(0,
 SDL_Surface* TetrisMode::render_matrix()
 {
     auto surface = SDL_CreateRGBSurface(0,
-                                        BLOCK_SIZE * TetrisMode::MATRIX_COLS,
-                                        BLOCK_SIZE * TetrisMode::MATRIX_VISIBLE_ROWS,
-                                        32, 0, 0, 0, 0);
+        BLOCK_SIZE * TetrisMode::MATRIX_COLS,
+        BLOCK_SIZE * TetrisMode::MATRIX_VISIBLE_ROWS,
+        32, 0, 0, 0, 0);
 
     SDL_Rect rect = { 0, 0, BLOCK_SIZE, BLOCK_SIZE };
     for (int row = MATRIX_VISIBLE_ROWS; row >= 0; row--) {
@@ -574,7 +601,7 @@ SDL_Surface* TetrisMode::render_matrix()
 
             rect.x += rect.w;
         }
-        
+
         rect.x = 0;
         rect.y += rect.h;
     }
@@ -585,7 +612,8 @@ SDL_Surface* TetrisMode::render_matrix()
 Tetromino TetrisMode::get_next_tetromino()
 {
     // generate bag if empty
-    if (tetromino_bag.empty()) tetromino_bag_generate();
+    if (tetromino_bag.empty())
+        tetromino_bag_generate();
     return tetromino_bag[tetromino_bag.size() - 1];
 }
 

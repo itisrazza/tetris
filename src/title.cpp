@@ -4,13 +4,14 @@
 #include <exception>
 #include <system_error>
 
+#include "data.h"
 #include "tetris.h"
 
 using namespace std::string_literals;
 
 TitleScreen::TitleScreen()
 {
-    title_image = SDL_LoadBMP("tetris.bmp");
+    title_image = SDL_LoadBMP_RW(SDL_RWFromMem(data_tetris, data_tetris_size), true);
     if (title_image == nullptr) {
         throw std::runtime_error("Failed to load title image: "s + SDL_GetError());
     }
@@ -57,7 +58,7 @@ void TitleScreen::draw(SDL_Surface* surface)
     SDL_BlitSurface(top_score, nullptr, surface, &rect);
     SDL_FreeSurface(top_score);
 
-    SDL_Surface* copyright = TTF_RenderUTF8_Solid(font, "© 2020 Raresh Nistor", color);
+    SDL_Surface* copyright = TTF_RenderUTF8_Solid(font, "© 2020-2022 Raresh Nistor", color);
     rect.x = GameSystem::SCREEN_WIDTH / 2 - press_start->w / 2;
     rect.y += 16 * 2;
     rect.w = copyright->w;
